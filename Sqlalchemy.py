@@ -2,6 +2,7 @@
 from sqlalchemy import create_engine, update, delete, Column, Float, Integer, String, MetaData, Table, text
 import logging
 import pandas as pd
+import os
 
 logging.getLogger('sqlalchemy.engine').setLevel(logging.CRITICAL)
 engine = create_engine('sqlite:///:memory:', echo=False)
@@ -21,9 +22,9 @@ measurements_table = Table('measurements', metadata,
 
 metadata.create_all(engine)
 print("Created 'stations' and 'measurements' tables.")
-path_to_file = r'C:\Users\leszek.stanislawski\Downloads\Kodilla\clean_stations.csv'
-stations_df = pd.read_csv(path_to_file)
-measurements_df = pd.read_csv(r'C:\Users\leszek.stanislawski\Downloads\Kodilla\clean_measure.csv')
+
+stations_df = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'clean_stations.csv'))
+measurements_df = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'clean_measure.csv'))
 
 
 with engine.connect() as connection:
