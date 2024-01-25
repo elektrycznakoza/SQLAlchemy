@@ -1,26 +1,10 @@
-# Ensure that the correct version of SQLAlchemy is used
-import sqlalchemy
+# Importowanie niezbędnych modułów
+from sqlalchemy import create_engine, update, delete, Column, Float, Integer, String, MetaData, Table, text
 import logging
-from sqlalchemy import create_engine, Column, Float, Integer, String, MetaData, Table, text
 import pandas as pd
-import os
 
-# Ustawienia konfiguracji loggera
-logging.basicConfig(filename='alchemycheck.txt', level=logging.INFO)
-
-path_to_file = r'C:\Users\leszek.stanislawski\Downloads\Kodilla\clean_stations.csv'
-
-if os.path.exists(path_to_file):
-    print("Plik istnieje.")
-    logging.info("Plik istnieje.")
-else:
-    print("Plik nie istnieje.")
-    logging.error("Plik nie istnieje.")
-
-# Tworzymy instancję silnika dla bazy danych SQLite w pamięci
-engine = create_engine('sqlite:///:memory:', echo=True)
-
-# Definiujemy tabelę "stations"
+logging.getLogger('sqlalchemy.engine').setLevel(logging.CRITICAL)
+engine = create_engine('sqlite:///:memory:', echo=False)
 metadata = MetaData()
 stations_table = Table('stations', metadata,
                        Column('station', String, primary_key=True),
@@ -28,38 +12,38 @@ stations_table = Table('stations', metadata,
                        Column('elevation', Float), Column('name', String),
                        Column('country', String), Column('state', String))
 
-# Definiujemy tabelę "measurements"
+
 measurements_table = Table('measurements', metadata,
                            Column('id', Integer, primary_key=True),
                            Column('station', String), Column('date', String),
                            Column('prcp', Float), Column('tobs', Float))
 
-# Tworzymy tabelę "stations" i "measurements"
+
 metadata.create_all(engine)
 print("Created 'stations' and 'measurements' tables.")
-logging.info("Created 'stations' and 'measurements' tables.")
-
-# Wczytujemy dane z plików CSV
+path_to_file = r'C:\Users\leszek.stanislawski\Downloads\Kodilla\clean_stations.csv'
 stations_df = pd.read_csv(path_to_file)
-measurements_df = pd.read_csv(
-    r'C:\Users\leszek.stanislawski\Downloads\Kodilla\clean_measure.csv')
+measurements_df = pd.read_csv(r'C:\Users\leszek.stanislawski\Downloads\Kodilla\clean_measure.csv')
 
-# Wstawiamy dane do tabeli "stations"
+
 with engine.connect() as connection:
-    stations_df.to_sql('stations', connection, if_exists='replace', index=False)
+    for index, row in stations_df.iterrows():
+        connection.execute(stations_table.insert().values(row.to_dict()))
     print("Data inserted into 'stations' table.")
-    logging.info("Data inserted into 'stations' table.")
 
-# Wstawiamy dane do tabeli "measurements"
+
 with engine.connect() as connection:
-    measurements_df.to_sql('measurements',
-                           connection,
-                           if_exists='replace',
-                           index=False)
+    for index, row in measurements_df.iterrows():
+        mapped_row = {
+            'station': row['station'],
+            'date': row['date'],
+            'prcp': row['precip'], 
+            'tobs': row['tobs']
+        }
+        connection.execute(measurements_table.insert().values(mapped_row))
     print("Data inserted into 'measurements' table.")
-    logging.info("Data inserted into 'measurements' table.")
 
-# Metoda do wyświetlania tabeli "stations"
+
 def display_stations_table():
     with engine.connect() as connection:
         query = text("SELECT * FROM stations LIMIT 5")
@@ -68,7 +52,7 @@ def display_stations_table():
         for r in results_stations:
             print(r)
 
-# Metoda do wyświetlania tabeli "measurements"
+
 def display_measurements_table():
     with engine.connect() as connection:
         query = text("SELECT * FROM measurements LIMIT 10")
@@ -76,7 +60,50 @@ def display_measurements_table():
         print("Data in 'measurements' table:")
         for r in results_measurements:
             print(r)
+    
 
-# Przykładowe wywołanie nowych metod
-display_stations_table()
-display_measurements_table()
+if __name__ == "__main__":
+    new_measurement = {
+        'station': 'USC00512345',
+        'date': '2024-01-25',
+        'prcp': 0.5,
+        'tobs': 70.0
+    }
+    with engine.connect() as connection:
+        connection.execute(measurements_table.insert().values(new_measurement))
+
+    print("Inserted a new record into 'measurements' table.")
+
+    updated_measurement = {
+        'station': 'USC00512345',
+        'date': '2024-01-25',
+        'prcp': 0.8,
+        'tobs': 72.0
+    }
+    with engine.connect() as connection:
+        update_stmt = (
+            update(measurements_table)
+            .where(measurements_table.c.station == 'USC00512345')
+            .where(measurements_table.c.date == '2024-01-25')
+            .values(updated_measurement)
+        )
+        connection.execute(update_stmt)
+
+    print("Updated the record in 'measurements' table.")
+
+    with engine.connect() as connection:
+        query = text("SELECT * FROM measurements WHERE station = 'USC00512345'")
+        results = connection.execute(query).fetchall()
+        print("Selected data from 'measurements' table:")
+        for r in results:
+            print(r)
+
+    with engine.connect() as connection:
+        delete_stmt = (
+            delete(measurements_table)
+            .where(measurements_table.c.station == 'USC00512345')
+            .where(measurements_table.c.date == '2024-01-25')
+        )
+        connection.execute(delete_stmt)
+
+    print("Deleted the record from 'measurements' table.")
