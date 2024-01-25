@@ -69,6 +69,8 @@ if __name__ == "__main__":
         'prcp': 0.5,
         'tobs': 70.0
     }
+
+
     with engine.connect() as connection:
         connection.execute(measurements_table.insert().values(new_measurement))
 
@@ -80,6 +82,8 @@ if __name__ == "__main__":
         'prcp': 0.8,
         'tobs': 72.0
     }
+
+
     with engine.connect() as connection:
         update_stmt = (
             update(measurements_table)
@@ -91,12 +95,14 @@ if __name__ == "__main__":
 
     print("Updated the record in 'measurements' table.")
 
+
     with engine.connect() as connection:
         query = text("SELECT * FROM measurements WHERE station = 'USC00512345'")
         results = connection.execute(query).fetchall()
         print("Selected data from 'measurements' table:")
         for r in results:
             print(r)
+
 
     with engine.connect() as connection:
         delete_stmt = (
